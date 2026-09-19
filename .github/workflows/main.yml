@@ -1,0 +1,1287 @@
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+void main() {
+  runApp(const GoharSangVahidApp());
+}
+
+class GoharSangVahidApp extends StatefulWidget {
+  const GoharSangVahidApp({super.key});
+
+  @override
+  State<GoharSangVahidApp> createState() => _GoharSangVahidAppState();
+}
+
+class _GoharSangVahidAppState extends State<GoharSangVahidApp> {
+  int themeIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'گوهر سنگ وحید',
+      theme: AppThemes.theme(themeIndex),
+      builder: (context, child) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: child ?? const SizedBox(),
+        );
+      },
+      home: HomePage(
+        themeIndex: themeIndex,
+        onThemeChanged: (value) {
+          setState(() {
+            themeIndex = value;
+          });
+        },
+      ),
+    );
+  }
+}
+
+class AppThemes {
+  static ThemeData theme(int index) {
+    if (index == 1) {
+      return ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF101812),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.green,
+          brightness: Brightness.dark,
+        ),
+        fontFamily: 'sans',
+      );
+    }
+
+    if (index == 2) {
+      return ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF120C18),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.deepPurple,
+          brightness: Brightness.dark,
+        ),
+        fontFamily: 'sans',
+      );
+    }
+
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      scaffoldBackgroundColor: const Color(0xFF080808),
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: Colors.amber,
+        brightness: Brightness.dark,
+      ),
+      fontFamily: 'sans',
+    );
+  }
+}
+
+class Gemstone {
+  String code;
+  String name;
+  String material;
+  String origin;
+  String dimensions;
+  String description;
+  String status;
+  List<String> images;
+
+  Gemstone({
+    required this.code,
+    required this.name,
+    required this.material,
+    required this.origin,
+    required this.dimensions,
+    required this.description,
+    required this.status,
+    this.images = const [],
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'code': code,
+      'name': name,
+      'material': material,
+      'origin': origin,
+      'dimensions': dimensions,
+      'description': description,
+      'status': status,
+      'images': images,
+    };
+  }
+
+  factory Gemstone.fromJson(Map<String, dynamic> json) {
+    return Gemstone(
+      code: json['code'] ?? '',
+      name: json['name'] ?? '',
+      material: json['material'] ?? '',
+      origin: json['origin'] ?? '',
+      dimensions: json['dimensions'] ?? '',
+      description: json['description'] ?? '',
+      status: json['status'] ?? 'موجود',
+      images: List<String>.from(json['images'] ?? []),
+    );
+  }
+}
+
+class AppData {
+  static const String gemsKey = 'gems';
+  static const String favoritesKey = 'favorites';
+
+  static Future<List<Gemstone>> getGems() async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = prefs.getStringList(gemsKey);
+
+    if (data == null || data.isEmpty) {
+      final gems = demoGems();
+
+      await saveGems(gems);
+
+      return gems;
+    }
+
+    return data
+        .map((e) => Gemstone.fromJson(jsonDecode(e)))
+        .toList();
+  }
+
+  static Future<void> saveGems(List<Gemstone> gems) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.setStringList(
+      gemsKey,
+      gems.map((e) => jsonEncode(e.toJson())).toList(),
+    );
+  }
+
+  static Future<Set<String>> getFavorites() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    return prefs.getStringList(favoritesKey)?.toSet() ?? {};
+  }
+
+  static Future<void> saveFavorites(Set<String> favorites) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.setStringList(
+      favoritesKey,
+      favorites.toList(),
+    );
+  }
+}
+
+List<Gemstone> demoGems() {
+  return [
+    Gemstone(
+      code: 'GV-0001',
+      name: 'جنگل رویایی',
+      material: 'اوپال . شجر زنده',
+      origin: 'خراسان',
+      dimensions: '۳/۱ × ۱/۴ × ۰/۶ mm',
+      description:
+          'گوهر سنگی هنری با نقش‌های طبیعی و ساختار چشم‌نواز.',
+      status: 'موجود',
+    ),
+    Gemstone(
+      code: 'GV-0002',
+      name: 'عقیق سرخ',
+      material: 'عقیق طبیعی',
+      origin: 'ایران',
+      dimensions: '۲/۸ × ۱/۹ × ۰/۷',
+      description:
+          'قطعه‌ای از عقیق طبیعی با رنگ سرخ و بافت خاص.',
+      status: 'موجود',
+    ),
+    Gemstone(
+      code: 'GV-0003',
+      name: 'جاسپر قرمز',
+      material: 'جاسپر طبیعی',
+      origin: 'ایران',
+      dimensions: '۳ × ۲ × ۰/۸',
+      description:
+          'سنگی طبیعی با رنگ‌های گرم و بافت منحصر به فرد.',
+      status: 'رزرو',
+    ),
+  ];
+}
+
+class HomePage extends StatefulWidget {
+  final int themeIndex;
+  final ValueChanged<int> onThemeChanged;
+
+  const HomePage({
+    super.key,
+    required this.themeIndex,
+    required this.onThemeChanged,
+  });
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  int currentIndex = 0;
+
+  final pages = const [
+    CatalogPage(),
+    ConsultationPage(),
+    GalleryPage(),
+    ContactPage(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'گوهر سنگ وحید',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            tooltip: 'مدیریت',
+            icon: const Icon(Icons.admin_panel_settings),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AdminPage(
+                    themeIndex: widget.themeIndex,
+                    onThemeChanged: widget.onThemeChanged,
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+      body: pages[currentIndex],
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: currentIndex,
+        onDestinationSelected: (value) {
+          setState(() {
+            currentIndex = value;
+          });
+        },
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.diamond_outlined),
+            selectedIcon: Icon(Icons.diamond),
+            label: 'کاتالوگ',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.support_agent),
+            label: 'مشاوره',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.photo_library_outlined),
+            label: 'گالری',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.contact_phone_outlined),
+            label: 'تماس',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class CatalogPage extends StatefulWidget {
+  const CatalogPage({super.key});
+
+  @override
+  State<CatalogPage> createState() => _CatalogPageState();
+}
+
+class _CatalogPageState extends State<CatalogPage> {
+  List<Gemstone> gems = [];
+  Set<String> favorites = {};
+  String search = '';
+
+  @override
+  void initState() {
+    super.initState();
+    load();
+  }
+
+  Future<void> load() async {
+    final g = await AppData.getGems();
+    final f = await AppData.getFavorites();
+
+    if (!mounted) return;
+
+    setState(() {
+      gems = g;
+      favorites = f;
+    });
+  }
+
+  Future<void> toggleFavorite(String code) async {
+    setState(() {
+      if (favorites.contains(code)) {
+        favorites.remove(code);
+      } else {
+        favorites.add(code);
+      }
+    });
+
+    await AppData.saveFavorites(favorites);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = gems.where((gem) {
+      final q = search.trim().toLowerCase();
+
+      if (q.isEmpty) return true;
+
+      return gem.name.toLowerCase().contains(q) ||
+          gem.code.toLowerCase().contains(q) ||
+          gem.material.toLowerCase().contains(q) ||
+          gem.origin.toLowerCase().contains(q);
+    }).toList();
+
+    return RefreshIndicator(
+      onRefresh: load,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          TextField(
+            onChanged: (value) {
+              setState(() {
+                search = value;
+              });
+            },
+            decoration: InputDecoration(
+              hintText: 'جستجوی نام، کد یا نوع گوهر سنگ...',
+              prefixIcon: const Icon(Icons.search),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            'کاتالوگ گوهر سنگ‌ها',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (filtered.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(40),
+              child: Center(
+                child: Text('موردی پیدا نشد'),
+              ),
+            ),
+          ...filtered.map(
+            (gem) => GemCard(
+              gem: gem,
+              favorite: favorites.contains(gem.code),
+              onFavorite: () => toggleFavorite(gem.code),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class GemCard extends StatelessWidget {
+  final Gemstone gem;
+  final bool favorite;
+  final VoidCallback onFavorite;
+
+  const GemCard({
+    super.key,
+    required this.gem,
+    required this.favorite,
+    required this.onFavorite,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => GemDetailPage(gem: gem),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 90,
+                height: 90,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.diamond,
+                  size: 42,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      gem.name,
+                      style: const TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text('جنس: ${gem.material}'),
+                    Text('اصالت: ${gem.origin}'),
+                    Text(
+                      'کد: ${gem.code}',
+                      style: TextStyle(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .primary,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Chip(
+                      label: Text(gem.status),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: onFavorite,
+                icon: Icon(
+                  favorite
+                      ? Icons.favorite
+                      : Icons.favorite_border,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class GemDetailPage extends StatelessWidget {
+  final Gemstone gem;
+
+  const GemDetailPage({
+    super.key,
+    required this.gem,
+  });
+
+  Future<void> purchase(BuildContext context) async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'درخواست خرید ثبت شد. برای هماهنگی با گالری تماس بگیرید.',
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(gem.name),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(18),
+        children: [
+          Container(
+            height: 260,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+            child: const Icon(
+              Icons.diamond,
+              size: 100,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            gem.name,
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 15),
+          InfoRow(title: 'کد گوهر', value: gem.code),
+          InfoRow(title: 'جنس', value: gem.material),
+          InfoRow(title: 'اصالت', value: gem.origin),
+          InfoRow(title: 'ابعاد', value: gem.dimensions),
+          InfoRow(title: 'وضعیت', value: gem.status),
+          const SizedBox(height: 15),
+          const Text(
+            'توضیحات',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(gem.description),
+          const SizedBox(height: 25),
+          FilledButton.icon(
+            onPressed: () => purchase(context),
+            icon: const Icon(Icons.shopping_cart),
+            label: const Text('درخواست خرید'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class InfoRow extends StatelessWidget {
+  final String title;
+  final String value;
+
+  const InfoRow({
+    super.key,
+    required this.title,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 90,
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(value),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ConsultationPage extends StatefulWidget {
+  const ConsultationPage({super.key});
+
+  @override
+  State<ConsultationPage> createState() =>
+      _ConsultationPageState();
+}
+
+class _ConsultationPageState extends State<ConsultationPage> {
+  final nameController = TextEditingController();
+  final phoneController = TextEditingController();
+  final questionController = TextEditingController();
+
+  List<XFile> images = [];
+
+  Future<void> selectImages() async {
+    final picker = ImagePicker();
+
+    final selected = await picker.pickMultiImage(
+      imageQuality: 100,
+    );
+
+    if (selected.isNotEmpty) {
+      setState(() {
+        images = selected;
+      });
+    }
+  }
+
+  void submit() {
+    if (questionController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('لطفاً سؤال یا توضیحات را وارد کنید.'),
+        ),
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'درخواست کارشناسی ثبت شد. کارشناس گالری پس از بررسی پاسخ می‌دهد.',
+        ),
+      ),
+    );
+
+    questionController.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(18),
+      children: [
+        const Icon(
+          Icons.support_agent,
+          size: 70,
+        ),
+        const SizedBox(height: 10),
+        const Center(
+          child: Text(
+            'کارشناسی و مشاوره',
+            style: TextStyle(
+              fontSize: 25,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        const Text(
+          'عکس گوهر سنگ خود را ارسال کنید و سؤال یا توضیحات خود را برای کارشناس گالری بنویسید.',
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 20),
+        TextField(
+          controller: nameController,
+          decoration: const InputDecoration(
+            labelText: 'نام',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: phoneController,
+          keyboardType: TextInputType.phone,
+          decoration: const InputDecoration(
+            labelText: 'شماره تماس',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: questionController,
+          maxLines: 5,
+          decoration: const InputDecoration(
+            labelText: 'سؤال / توضیحات',
+            hintText: 'مثلاً نوع سنگ، طبیعی بودن، ارزش یا ویژگی‌ها...',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 15),
+        OutlinedButton.icon(
+          onPressed: selectImages,
+          icon: const Icon(Icons.add_photo_alternate),
+          label: Text(
+            images.isEmpty
+                ? 'انتخاب عکس گوهر سنگ'
+                : '${images.length} عکس انتخاب شده',
+          ),
+        ),
+        const SizedBox(height: 15),
+        if (images.isNotEmpty)
+          SizedBox(
+            height: 90,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: images.length,
+              itemBuilder: (_, index) {
+                return Container(
+                  width: 90,
+                  margin: const EdgeInsets.only(left: 8),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(),
+                  ),
+                  child: const Icon(Icons.image),
+                );
+              },
+            ),
+          ),
+        const SizedBox(height: 20),
+        FilledButton.icon(
+          onPressed: submit,
+          icon: const Icon(Icons.send),
+          label: const Text('ارسال درخواست کارشناسی'),
+        ),
+      ],
+    );
+  }
+}
+
+class GalleryPage extends StatelessWidget {
+  const GalleryPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(18),
+      children: [
+        const Text(
+          'گالری تصاویر',
+          style: TextStyle(
+            fontSize: 25,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 15),
+        GalleryCategory(
+          icon: Icons.landscape,
+          title: 'طبیعت',
+          description: 'تصاویر طبیعت و مناظر',
+        ),
+        GalleryCategory(
+          icon: Icons.pets,
+          title: 'جانوران',
+          description: 'تصاویر جانوران',
+        ),
+        GalleryCategory(
+          icon: Icons.flutter_dash,
+          title: 'پرندگان',
+          description: 'تصاویر پرندگان',
+        ),
+        GalleryCategory(
+          icon: Icons.photo,
+          title: 'تصاویر هنری',
+          description: 'مجموعه تصاویر هنری',
+        ),
+      ],
+    );
+  }
+}
+
+class GalleryCategory extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String description;
+
+  const GalleryCategory({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        leading: Icon(icon, size: 38),
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        subtitle: Text(description),
+        trailing: const Icon(Icons.arrow_back_ios),
+        onTap: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('آلبوم $title'),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class ContactPage extends StatelessWidget {
+  const ContactPage({super.key});
+
+  Future<void> openLink(
+    BuildContext context,
+    String url,
+  ) async {
+    final uri = Uri.parse(url);
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('امکان باز کردن لینک وجود ندارد.'),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(18),
+      children: [
+        const Icon(
+          Icons.diamond,
+          size: 70,
+        ),
+        const SizedBox(height: 10),
+        const Center(
+          child: Text(
+            'گوهر سنگ وحید',
+            style: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        const SizedBox(height: 25),
+        ContactTile(
+          icon: Icons.phone,
+          title: 'تماس تلفنی',
+          subtitle: 'شماره تماس گالری',
+          onTap: () => openLink(
+            context,
+            'tel:+989000000000',
+          ),
+        ),
+        ContactTile(
+          icon: Icons.chat,
+          title: 'واتساپ',
+          subtitle: 'ارتباط در واتساپ',
+          onTap: () => openLink(
+            context,
+            'https://wa.me/989000000000',
+          ),
+        ),
+        ContactTile(
+          icon: Icons.camera_alt,
+          title: 'اینستاگرام',
+          subtitle: 'صفحه اینستاگرام گالری',
+          onTap: () => openLink(
+            context,
+            'https://instagram.com/',
+          ),
+        ),
+        ContactTile(
+          icon: Icons.send,
+          title: 'تلگرام',
+          subtitle: 'کانال / ارتباط تلگرام',
+          onTap: () => openLink(
+            context,
+            'https://t.me/',
+          ),
+        ),
+        ContactTile(
+          icon: Icons.video_library,
+          title: 'یوتیوب',
+          subtitle: 'کانال یوتیوب',
+          onTap: () => openLink(
+            context,
+            'https://youtube.com/',
+          ),
+        ),
+        const SizedBox(height: 20),
+        const Card(
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'آدرس گالری',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'آدرس گالری را می‌توان از بخش مدیریت تغییر داد.',
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class ContactTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const ContactTile({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: ListTile(
+        leading: Icon(icon, size: 30),
+        title: Text(title),
+        subtitle: Text(subtitle),
+        trailing: const Icon(Icons.arrow_back_ios),
+        onTap: onTap,
+      ),
+    );
+  }
+}
+
+class AdminPage extends StatefulWidget {
+  final int themeIndex;
+  final ValueChanged<int> onThemeChanged;
+
+  const AdminPage({
+    super.key,
+    required this.themeIndex,
+    required this.onThemeChanged,
+  });
+
+  @override
+  State<AdminPage> createState() => _AdminPageState();
+}
+
+class _AdminPageState extends State<AdminPage> {
+  bool unlocked = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!unlocked) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('مدیریت گالری'),
+        ),
+        body: Center(
+          child: FilledButton(
+            onPressed: () async {
+              final controller = TextEditingController();
+
+              final result = await showDialog<bool>(
+                context: context,
+                builder: (_) {
+                  return AlertDialog(
+                    title: const Text('ورود مدیریت'),
+                    content: TextField(
+                      controller: controller,
+                      obscureText: true,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'رمز مدیریت',
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () =>
+                            Navigator.pop(context, false),
+                        child: const Text('لغو'),
+                      ),
+                      FilledButton(
+                        onPressed: () {
+                          Navigator.pop(
+                            context,
+                            controller.text == '1234',
+                          );
+                        },
+                        child: const Text('ورود'),
+                      ),
+                    ],
+                  );
+                },
+              );
+
+              if (result == true) {
+                setState(() {
+                  unlocked = true;
+                });
+              }
+            },
+            child: const Text('ورود به مدیریت'),
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('پنل مدیریت'),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(18),
+        children: [
+          const Text(
+            'مدیریت کاتالوگ',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 15),
+          ListTile(
+            leading: const Icon(Icons.add_box),
+            title: const Text('افزودن گوهر سنگ'),
+            subtitle: const Text(
+              'ثبت نام، جنس، اصالت، ابعاد و وضعیت',
+            ),
+            trailing: const Icon(Icons.arrow_back_ios),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AddGemPage(),
+                ),
+              );
+            },
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.palette),
+            title: const Text('قالب ظاهری برنامه'),
+            subtitle: Text(
+              widget.themeIndex == 0
+                  ? 'سلطنتی'
+                  : widget.themeIndex == 1
+                      ? 'طبیعت'
+                      : 'هنری',
+            ),
+            onTap: () {
+              showModalBottomSheet(
+                context: context,
+                builder: (_) {
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ListTile(
+                        title: const Text('سلطنتی'),
+                        subtitle: const Text(
+                          'مشکی + طلایی',
+                        ),
+                        onTap: () {
+                          widget.onThemeChanged(0);
+                          Navigator.pop(context);
+                        },
+                      ),
+                      ListTile(
+                        title: const Text('طبیعت'),
+                        subtitle: const Text(
+                          'سبز تیره + رنگ‌های طبیعی',
+                        ),
+                        onTap: () {
+                          widget.onThemeChanged(1);
+                          Navigator.pop(context);
+                        },
+                      ),
+                      ListTile(
+                        title: const Text('هنری'),
+                        subtitle: const Text(
+                          'بنفش تیره + مشکی + طلایی',
+                        ),
+                        onTap: () {
+                          widget.onThemeChanged(2);
+                          Navigator.pop(context);
+                        },
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
+          ),
+          const Divider(),
+          const ListTile(
+            leading: Icon(Icons.info_outline),
+            title: Text('نسخه برنامه'),
+            subtitle: Text('گوهر سنگ وحید - 1.0.0'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class AddGemPage extends StatefulWidget {
+  const AddGemPage({super.key});
+
+  @override
+  State<AddGemPage> createState() => _AddGemPageState();
+}
+
+class _AddGemPageState extends State<AddGemPage> {
+  final name = TextEditingController();
+  final material = TextEditingController();
+  final origin = TextEditingController();
+  final dimensions = TextEditingController();
+  final description = TextEditingController();
+
+  String status = 'موجود';
+
+  Future<void> save() async {
+    if (name.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('نام گوهر سنگ را وارد کنید.'),
+        ),
+      );
+      return;
+    }
+
+    final gems = await AppData.getGems();
+
+    final code =
+        'GV-${(gems.length + 1).toString().padLeft(4, '0')}';
+
+    gems.add(
+      Gemstone(
+        code: code,
+        name: name.text.trim(),
+        material: material.text.trim(),
+        origin: origin.text.trim(),
+        dimensions: dimensions.text.trim(),
+        description: description.text.trim(),
+        status: status,
+      ),
+    );
+
+    await AppData.saveGems(gems);
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'گوهر سنگ با کد $code ثبت شد.',
+        ),
+      ),
+    );
+
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('افزودن گوهر سنگ'),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(18),
+        children: [
+          TextField(
+            controller: name,
+            decoration: const InputDecoration(
+              labelText: 'نام گوهر سنگ',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: material,
+            decoration: const InputDecoration(
+              labelText: 'جنس گوهر سنگ',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: origin,
+            decoration: const InputDecoration(
+              labelText: 'اصالت / محل',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: dimensions,
+            decoration: const InputDecoration(
+              labelText: 'ابعاد',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            value: status,
+            decoration: const InputDecoration(
+              labelText: 'وضعیت',
+              border: OutlineInputBorder(),
+            ),
+            items: const [
+              DropdownMenuItem(
+                value: 'موجود',
+                child: Text('موجود'),
+              ),
+              DropdownMenuItem(
+                value: 'رزرو',
+                child: Text('رزرو'),
+              ),
+              DropdownMenuItem(
+                value: 'فروخته‌شده',
+                child: Text('فروخته‌شده'),
+              ),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                setState(() {
+                  status = value;
+                });
+              }
+            },
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: description,
+            maxLines: 5,
+            decoration: const InputDecoration(
+              labelText: 'توضیحات',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 20),
+          FilledButton.icon(
+            onPressed: save,
+            icon: const Icon(Icons.save),
+            label: const Text('ذخیره گوهر سنگ'),
+          ),
+        ],
+      ),
+    );
+  }
+}
